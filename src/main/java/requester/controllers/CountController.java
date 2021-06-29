@@ -38,6 +38,7 @@ public class CountController {
         Thread thread2 = new Thread(() -> counterService.changeCounter(RequestTypeEnum.POST));
         Thread thread3 = new Thread(() -> counterService.changeCounter(RequestTypeEnum.POST));
         Thread thread4 = new Thread(() -> counterService.changeCounter(RequestTypeEnum.POST));
+
         thread1.start();
         thread2.start();
         thread3.start();

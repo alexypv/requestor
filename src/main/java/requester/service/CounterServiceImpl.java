@@ -9,6 +9,9 @@ import requester.enums.RequestTypeEnum;
 import requester.persistence.models.Counter;
 import requester.persistence.repositories.CounterRepository;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Service
 @Log4j2
 public class CounterServiceImpl implements CounterService {
@@ -37,13 +40,16 @@ public class CounterServiceImpl implements CounterService {
         Long value = null;
         while (!success) {
             try {
-                value = editCounter(requestType);
+                Map<String, Long> results = editCounter(requestType);
+                requestService.createRequest(results.get("value"), results.get("version"), requestType);
+                value = results.get("value");
                 success = true;
             } catch (ObjectOptimisticLockingFailureException e) {
-                log.info("  # Counter version has been changed, trying to change again... ");
+                log.info("  # Счетчик был изменен в другой транзакции, повтор сохранения... ");
                 success = false;
             }
         }
+
         return value;
     }
 
@@ -54,15 +60,16 @@ public class CounterServiceImpl implements CounterService {
      * @return Значение счетчика;
      */
     @Transactional
-    public Long editCounter(RequestTypeEnum requestType) {
-        log.info("  # Change counter value...");
+    public Map<String, Long> editCounter(RequestTypeEnum requestType) {
+        log.info("  # Сохранение счетчика...");
         Counter counter = counterRepository.getCounter();
         if (requestType.equals(RequestTypeEnum.POST)) counter.setValue(counter.getValue() + 1);
         else if (requestType.equals(RequestTypeEnum.DELETE)) counter.setValue(0L);
         counterRepository.save(counter); // Тут может выбросить исключение ObjectOptimisticLockingFailureException
-        // Создаем запись в истории запросов
-        requestService.createRequest(counter.getValue(), counter.getVersion(), requestType);
-        return counter.getValue();
+        Map<String, Long> result = new HashMap<>();
+        result.put("value", counter.getValue());
+        result.put("version", counter.getVersion());
+        return result;
     }
 
 
